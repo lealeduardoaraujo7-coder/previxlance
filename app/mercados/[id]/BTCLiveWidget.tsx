@@ -41,7 +41,7 @@ export default function BTCLiveWidget({ yesPct, noPct }: { yesPct: number; noPct
   const lowRef      = useRef<HTMLSpanElement>(null)
   const volRef      = useRef<HTMLSpanElement>(null)
   const panelRef    = useRef<HTMLDivElement>(null)
-  const flashTimer  = useRef<ReturnType<typeof setTimeout>>()
+  const flashTimer  = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   /* SVG refs */
   const lineRef     = useRef<SVGPathElement>(null)
@@ -302,8 +302,8 @@ export default function BTCLiveWidget({ yesPct, noPct }: { yesPct: number; noPct
 
         {/* Stats row */}
         <div
-          className="grid grid-cols-3 divide-x"
-          style={{ borderTop: "1px solid var(--border)", divideColor: "var(--border)" }}
+          className="grid grid-cols-3 divide-x divide-[var(--border)]"
+          style={{ borderTop: "1px solid var(--border)" }}
         >
           {[
             { label: "Máx. 24h", ref: highRef },
