@@ -1,0 +1,123 @@
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+/* ── Design Tokens ─────────────────────────────────────────────────────────── */
+:root {
+  --bg:        #f6f7f9;
+  --card:      #ffffff;
+  --card-2:    #f0f2f5;
+  --border:    rgba(0,0,0,0.07);
+  --border-2:  rgba(0,0,0,0.12);
+  --border-strong: rgba(0,0,0,0.16);
+  --text-0:    #0d1117;
+  --text-1:    #2f3742;
+  --text-2:    #5c6773;
+  --green:     #00c076;
+  --green-dim: rgba(0,192,118,0.11);
+  --red:       #ff4d4d;
+  --red-dim:   rgba(255,77,77,0.10);
+}
+
+.dark {
+  --bg:        #0b0f14;
+  --card:      #11161d;
+  --card-2:    #161c26;
+  --border:    rgba(255,255,255,0.06);
+  --border-2:  rgba(255,255,255,0.11);
+  --border-strong: rgba(255,255,255,0.22);
+  --text-0:    #f5f7fa;
+  --text-1:    #b3bec9;
+  --text-2:    #7e8a97;
+  --green:     #00c076;
+  --green-dim: rgba(0,192,118,0.13);
+  --red:       #ff5c5c;
+  --red-dim:   rgba(255,92,92,0.12);
+}
+
+/* ── Base ──────────────────────────────────────────────────────────────────── */
+body {
+  background: var(--bg);
+  color: var(--text-0);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 99px; }
+
+/* ── Animations ────────────────────────────────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0px); }
+}
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@keyframes live-ring {
+  0%,100% { transform: scale(1); opacity: 0.8; }
+  50%     { transform: scale(1.5); opacity: 0; }
+}
+
+.fade-up   { animation: fadeInUp 0.6s cubic-bezier(0.16,1,0.3,1) both; }
+.fade-up-1 { animation-delay: 0.08s; }
+.fade-up-2 { animation-delay: 0.16s; }
+.fade-up-3 { animation-delay: 0.24s; }
+.fade-up-4 { animation-delay: 0.34s; }
+.fade-up-5 { animation-delay: 0.44s; }
+
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker-scroll 40s linear infinite;
+}
+.ticker-track:hover { animation-play-state: paused; }
+
+/* ── Card hover ────────────────────────────────────────────────────────────── */
+.market-card {
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+@media (hover: hover) {
+  .market-card:hover {
+    transform: translateY(-1px);
+    border-color: var(--border-strong) !important;
+  }
+}
+
+/* ── Probability pill ──────────────────────────────────────────────────────── */
+.prob-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--green);
+  background: transparent;
+  color: var(--text-0);
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+@media (hover: hover) {
+  .prob-pill:hover { background: var(--green); color: #fff; }
+}
+.prob-pill:active { background: var(--green); color: #fff; }
+@media (max-width: 640px) {
+  .prob-pill { height: 44px; }
+}
+
+/* No pool yet → muted "—" pill: grey, no green, no fill on interaction. */
+.prob-pill-muted {
+  border-color: var(--border-2);
+  color: var(--text-2);
+}
+@media (hover: hover) {
+  .prob-pill-muted:hover { background: transparent; color: var(--text-2); }
+}
+.prob-pill-muted:active { background: transparent; color: var(--text-2); }

@@ -1,0 +1,249 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String?
+  image         String?
+  role          String    @default("USER")
+  balance       Int       @default(0)
+  cpf           String?
+  phone         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts     Account[]
+  sessions     Session[]
+  bets         Bet[]
+  transactions Transaction[]
+  comments     Comment[]
+  commentLikes CommentLike[]
+  savedMarkets SavedMarket[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+/// A market/event category with an admin-managed image and tint color.
+/// The `slug` is the IMMUTABLE identity used as the foreign key from Market and
+/// Event (references: [slug]). Renaming a slug is a DATA MIGRATION, not an edit:
+/// the admin never exposes the slug field, and the update API rejects any `slug`
+/// in the payload. Only `name`, `imageUrl`, `color`, `showInNav` and `order`
+/// are editable.
+model Category {
+  id        String  @id @default(cuid())
+  slug      String  @unique
+  name      String
+  imageUrl  String?
+  color     String?
+  showInNav Boolean @default(false)
+  order     Int     @default(0)
+
+  markets   Market[]
+  events    Event[]
+
+  @@index([showInNav, order])
+}
+
+/// An event groups several independent binary markets (e.g. "Quem ganha o
+/// CBLOL 2026?" → one child market per team). Status is a plain String because
+/// SQLite + Prisma do not support enums (same as Market.status).
+model Event {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String?
+  imageUrl    String?
+  collection  String?  // free text shown at the right of the card header, e.g. "CBLOL 2026"
+  category    String   @default("outros") // FK → Category.slug
+  categoryRef Category @relation(fields: [category], references: [slug], onDelete: Restrict)
+  closesAt    DateTime
+  status      String   @default("OPEN") // OPEN | CLOSED | RESOLVED | CANCELLED
+  featured    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  markets     Market[]
+
+  @@index([featured, category])
+}
+
+model Market {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  imageUrl    String?
+  category    String    @default("outros") // FK → Category.slug
+  categoryRef Category  @relation(fields: [category], references: [slug], onDelete: Restrict)
+  type        String    @default("BINARY")
+  status      String    @default("OPEN")
+  totalPool   Int       @default(0)
+  closesAt    DateTime
+  resolvedAt  DateTime?
+  resolution  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  proposedByName  String?
+  proposedByEmail String?
+
+  featured      Boolean   @default(false)
+  featuredOrder Int       @default(0)
+  featuredUntil DateTime?
+
+  // Optional membership in an Event. Deleting the event unlinks children
+  // (SetNull) rather than deleting them — they become standalone markets.
+  eventId       String?
+  shortLabel    String?  // "LOUD", "FURIA" — label shown on the event card line
+  shortImageUrl String?  // per-line image on the event card/page (falls back to the series block). Distinct from imageUrl (the standalone card image).
+  event         Event?   @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  options      MarketOption[]
+  bets         Bet[]
+  comments     Comment[]
+  savedBy      SavedMarket[]
+
+  @@index([featured, featuredOrder])
+  @@index([eventId])
+}
+
+/// Editable items of the home "manchete" (live ticker) strip.
+model TickerItem {
+  id        String   @id @default(cuid())
+  label     String   // badge text, e.g. "ALTA", "COMPRA"
+  text      String   // message shown after the badge
+  color     String   @default("#00c076") // hex for dot + label
+  enabled   Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([enabled, order])
+}
+
+/// Singleton (id = "carousel") holding home-carousel configuration.
+/// Stored in the DB (not a file) so it can be changed in production.
+model Setting {
+  id           String   @id @default("carousel")
+  maxSlides    Int      @default(7)
+  autoplay     Boolean  @default(true)
+  intervalMs   Int      @default(8000)
+  pauseOnHover Boolean  @default(true)
+  fallback     String   @default("VOLUME") // VOLUME | LIVE | RECENT | NONE
+  updatedAt    DateTime @updatedAt
+}
+
+model MarketOption {
+  id       String @id @default(cuid())
+  marketId String
+  label    String
+  totalBet Int    @default(0)
+
+  market Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  bets   Bet[]
+}
+
+model Bet {
+  id        String   @id @default(cuid())
+  userId    String
+  marketId  String
+  optionId  String?
+  outcome   String?
+  amount    Int
+  payout    Int?
+  createdAt DateTime @default(now())
+
+  user   User          @relation(fields: [userId], references: [id])
+  market Market        @relation(fields: [marketId], references: [id])
+  option MarketOption? @relation(fields: [optionId], references: [id])
+}
+
+model Transaction {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  amount    Int
+  status    String   @default("PENDING")
+  pixKey    String?
+  reference String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  userId    String
+  marketId  String
+  text      String
+  gifUrl    String?
+  createdAt DateTime @default(now())
+
+  user   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  market Market        @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  likes  CommentLike[]
+}
+
+model CommentLike {
+  id        String @id @default(cuid())
+  userId    String
+  commentId String
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, commentId])
+}
+
+model SavedMarket {
+  id        String   @id @default(cuid())
+  userId    String
+  marketId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  market Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, marketId])
+}
