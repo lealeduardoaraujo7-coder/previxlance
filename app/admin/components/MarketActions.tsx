@@ -1,6 +1,7 @@
 "use client"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import ConfirmDialog from "@/app/components/ConfirmDialog"
 
 interface Props {
   marketId: string
@@ -15,6 +16,7 @@ export default function MarketActions({ marketId, status, betCount, featured = f
   const [error, setError] = useState("")
   const [isFeatured, setIsFeatured] = useState(featured)
   const [starLoading, setStarLoading] = useState(false)
+  const [confirmKind, setConfirmKind] = useState<"delete" | "cancel" | null>(null)
 
   const canFeature = status === "OPEN"
 
@@ -53,23 +55,25 @@ export default function MarketActions({ marketId, status, betCount, featured = f
     router.refresh()
   }
 
-  async function handleDelete() {
-    if (!confirm(`Excluir este mercado? ${betCount > 0 ? `Ele tem ${betCount} aposta(s).` : ""} Esta ação não pode ser desfeita.`)) return
+  async function doDelete() {
     setLoading("delete")
     setError("")
     const res = await fetch(`/api/admin/mercados/${marketId}`, { method: "DELETE" })
     const data = await res.json()
     setLoading(null)
+    setConfirmKind(null)
     if (!res.ok) { setError(data.error || "Erro ao excluir"); return }
     router.refresh()
   }
 
-  async function handleCancel() {
-    const msg = betCount > 0
-      ? `Cancelar este mercado? As ${betCount} aposta(s) serão reembolsadas.`
-      : "Cancelar este mercado?"
-    if (!confirm(msg)) return
-    sendAction("cancel")
+  async function doCancel() {
+    setConfirmKind(null)
+    await sendAction("cancel")
+  }
+
+  function runConfirm() {
+    if (confirmKind === "delete") doDelete()
+    else if (confirmKind === "cancel") doCancel()
   }
 
   const btn = "rounded-lg px-3 py-1.5 text-xs transition-colors disabled:opacity-50"
@@ -127,19 +131,44 @@ export default function MarketActions({ marketId, status, betCount, featured = f
 
         {/* Cancelar (OPEN ou CLOSED) */}
         {(status === "OPEN" || status === "CLOSED") && (
-          <button onClick={handleCancel} disabled={loading !== null}
+          <button onClick={() => setConfirmKind("cancel")} disabled={loading !== null}
             className={`${btn} border border-orange-200 dark:border-orange-700 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-500/10`}>
             {loading === "cancel" ? "..." : "Cancelar"}
           </button>
         )}
 
         {/* Excluir */}
-        <button onClick={handleDelete} disabled={loading !== null}
+        <button onClick={() => setConfirmKind("delete")} disabled={loading !== null}
           className={`${btn} border border-red-200 dark:border-red-800 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10`}>
           {loading === "delete" ? "..." : "Excluir"}
         </button>
       </div>
       {error && <p className="text-xs text-red-500 dark:text-red-400 text-right">{error}</p>}
+
+      <ConfirmDialog
+        open={confirmKind === "delete"}
+        danger
+        title="Excluir mercado?"
+        message={`${betCount > 0 ? `Este mercado tem ${betCount} aposta(s). ` : ""}Esta ação não pode ser desfeita.`}
+        confirmLabel="Excluir"
+        loading={loading === "delete"}
+        onConfirm={runConfirm}
+        onCancel={() => setConfirmKind(null)}
+      />
+
+      <ConfirmDialog
+        open={confirmKind === "cancel"}
+        danger
+        title="Cancelar mercado?"
+        message={betCount > 0
+          ? `As ${betCount} aposta(s) serão reembolsadas aos apostadores.`
+          : "O mercado será cancelado."}
+        confirmLabel="Cancelar mercado"
+        cancelLabel="Voltar"
+        loading={loading === "cancel"}
+        onConfirm={runConfirm}
+        onCancel={() => setConfirmKind(null)}
+      />
     </div>
   )
 }

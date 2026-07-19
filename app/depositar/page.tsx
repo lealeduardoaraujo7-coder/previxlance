@@ -6,6 +6,8 @@ import { QRCodeSVG } from "qrcode.react"
 
 const QUICK_VALUES = [10, 25, 50, 100, 250, 500]
 
+type Method = "pix" | "boleto"
+
 function formatCPF(v: string) {
   return v.replace(/\D/g, "").slice(0, 11)
     .replace(/(\d{3})(\d)/, "$1.$2")
@@ -49,6 +51,7 @@ export default function DepositarPage() {
   const router = useRouter()
   const { data: session, status, update } = useSession()
 
+  const [method, setMethod] = useState<Method>("pix")
   const [amount, setAmount] = useState("")
   const [cpf, setCpf] = useState("")
   const [phone, setPhone] = useState("")
@@ -64,26 +67,38 @@ export default function DepositarPage() {
     transactionId: number
   } | null>(null)
 
+  // After Boleto is generated
+  const [boletoData, setBoletoData] = useState<{
+    url: string | null
+    line: string | null
+    expiresAt: string
+    amount: number
+    transactionId: number
+  } | null>(null)
+
   const amountCents = Math.round(parseFloat(amount || "0") * 100)
   const brl = (cents: number) => (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 
-  // Poll for payment confirmation
+  // Poll for payment confirmation (works for both PIX and Boleto — the status
+  // route matches by transaction reference, regardless of method).
+  const pendingRef = pixData?.transactionId ?? boletoData?.transactionId ?? null
   useEffect(() => {
-    if (!pixData) return
+    if (pendingRef == null) return
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`/api/depositar/status?ref=${pixData.transactionId}`)
+        const res = await fetch(`/api/depositar/status?ref=${pendingRef}`)
         const data = await res.json()
         if (data.status === "COMPLETED") {
           clearInterval(interval)
           await update()
           setPixData(null)
+          setBoletoData(null)
           router.push("/?deposito=ok")
         }
       } catch {}
     }, 4000)
     return () => clearInterval(interval)
-  }, [pixData])
+  }, [pendingRef])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -96,7 +111,8 @@ export default function DepositarPage() {
     setLoading(true)
     setError("")
 
-    const res = await fetch("/api/depositar", {
+    const endpoint = method === "pix" ? "/api/depositar" : "/api/depositar/boleto"
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ amount: amountCents, cpf: cpfClean, phone: phoneClean }),
@@ -104,19 +120,31 @@ export default function DepositarPage() {
     const data = await res.json()
     setLoading(false)
 
-    if (!res.ok) { setError(data.error || "Erro ao gerar PIX"); return }
+    if (!res.ok) {
+      setError(data.error || (method === "pix" ? "Erro ao gerar PIX" : "Erro ao gerar boleto"))
+      return
+    }
 
-    setPixData({
-      qrcode: data.qrcode,
-      expiresAt: data.expiresAt,
-      amount: data.amount,
-      transactionId: data.transactionId,
-    })
+    if (method === "pix") {
+      setPixData({
+        qrcode: data.qrcode,
+        expiresAt: data.expiresAt,
+        amount: data.amount,
+        transactionId: data.transactionId,
+      })
+    } else {
+      setBoletoData({
+        url: data.url ?? null,
+        line: data.line ?? null,
+        expiresAt: data.expiresAt,
+        amount: data.amount,
+        transactionId: data.transactionId,
+      })
+    }
   }
 
-  function copyQR() {
-    if (!pixData) return
-    navigator.clipboard.writeText(pixData.qrcode).then(() => {
+  function copyText(text: string) {
+    navigator.clipboard.writeText(text).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2500)
     })
@@ -167,7 +195,7 @@ export default function DepositarPage() {
         <p className="text-xs font-mono break-all mb-3 leading-relaxed" style={{ color: "var(--text-1)" }}>
           {pixData.qrcode.slice(0, 60)}...
         </p>
-        <button onClick={copyQR}
+        <button onClick={() => copyText(pixData.qrcode)}
           className="w-full rounded-xl py-2.5 text-sm font-semibold transition-all"
           style={{
             background: copied ? "#00C853" : "var(--card)",
@@ -204,11 +232,107 @@ export default function DepositarPage() {
     </div>
   )
 
+  // ── Boleto screen ──
+  if (boletoData) return (
+    <div className="mx-auto max-w-sm px-4 py-10">
+      <div className="text-center mb-6">
+        <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold mb-4"
+          style={{ background: "rgba(0,200,83,0.1)", color: "#00C853" }}>
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+          Aguardando pagamento
+        </div>
+        <h1 className="text-2xl font-bold mb-1" style={{ color: "var(--text-0)" }}>
+          {brl(boletoData.amount)}
+        </h1>
+        <p className="text-sm" style={{ color: "var(--text-2)" }}>
+          Vence em {new Date(boletoData.expiresAt + "T12:00:00").toLocaleDateString("pt-BR")}
+        </p>
+      </div>
+
+      {/* Linha digitável */}
+      {boletoData.line && (
+        <div className="rounded-2xl p-4 mb-4" style={{ background: "var(--card-2)", border: "1px solid var(--border-2)" }}>
+          <p className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-2)" }}>
+            Linha digitável
+          </p>
+          <p className="text-xs font-mono break-all mb-3 leading-relaxed" style={{ color: "var(--text-1)" }}>
+            {boletoData.line}
+          </p>
+          <button onClick={() => copyText(boletoData.line!)}
+            className="w-full rounded-xl py-2.5 text-sm font-semibold transition-all"
+            style={{
+              background: copied ? "#00C853" : "var(--card)",
+              border: "1px solid var(--border-2)",
+              color: copied ? "#fff" : "var(--text-0)",
+            }}>
+            {copied ? "✓ Copiado!" : "Copiar linha digitável"}
+          </button>
+        </div>
+      )}
+
+      {/* Link para o boleto (PDF) */}
+      {boletoData.url && (
+        <a href={boletoData.url} target="_blank" rel="noopener noreferrer"
+          className="block w-full text-center rounded-xl py-3.5 text-sm font-bold text-white transition-all hover:opacity-90 mb-4"
+          style={{ background: "linear-gradient(135deg,#00c076,#009e64)" }}>
+          Abrir boleto (PDF)
+        </a>
+      )}
+
+      {!boletoData.line && !boletoData.url && (
+        <div className="rounded-xl px-4 py-3 text-sm mb-4"
+          style={{ background: "rgba(234,179,8,0.08)", border: "1px solid rgba(234,179,8,0.2)", color: "#a16207" }}>
+          O boleto está sendo registrado. Atualize em alguns segundos para ver a linha digitável.
+        </div>
+      )}
+
+      {/* Steps */}
+      <div className="rounded-2xl p-4 mb-4 space-y-2.5" style={{ background: "var(--card-2)", border: "1px solid var(--border-2)" }}>
+        {[
+          "Copie a linha digitável ou abra o PDF",
+          "Abra o app do seu banco",
+          "Vá em Pagar → Boleto",
+          "O saldo é creditado após a compensação",
+        ].map((step, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <span className="flex-shrink-0 h-5 w-5 rounded-full text-[10px] font-bold flex items-center justify-center"
+              style={{ background: "rgba(0,200,83,0.15)", color: "#00C853" }}>
+              {i + 1}
+            </span>
+            <span className="text-sm" style={{ color: "var(--text-1)" }}>{step}</span>
+          </div>
+        ))}
+      </div>
+
+      <button onClick={() => setBoletoData(null)}
+        className="w-full rounded-xl py-2.5 text-sm transition-colors"
+        style={{ color: "var(--text-2)" }}>
+        ← Voltar
+      </button>
+    </div>
+  )
+
   // ── Deposit form ──
   return (
     <div className="mx-auto max-w-sm px-4 py-10">
       <h1 className="text-2xl font-bold mb-1" style={{ color: "var(--text-0)" }}>Depositar</h1>
-      <p className="text-sm mb-8" style={{ color: "var(--text-2)" }}>Adicione saldo via PIX instantâneo</p>
+      <p className="text-sm mb-6" style={{ color: "var(--text-2)" }}>
+        {method === "pix" ? "Adicione saldo via PIX instantâneo" : "Adicione saldo via boleto bancário"}
+      </p>
+
+      {/* Método de pagamento */}
+      <div className="grid grid-cols-2 gap-2 mb-6 p-1 rounded-xl" style={{ background: "var(--card-2)", border: "1px solid var(--border-2)" }}>
+        {([["pix", "PIX"], ["boleto", "Boleto"]] as const).map(([key, label]) => (
+          <button key={key} type="button" onClick={() => { setMethod(key); setError("") }}
+            className="rounded-lg py-2 text-sm font-semibold transition-all"
+            style={{
+              background: method === key ? "linear-gradient(135deg,#00c076,#009e64)" : "transparent",
+              color: method === key ? "#fff" : "var(--text-2)",
+            }}>
+            {label}
+          </button>
+        ))}
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Amount */}
@@ -289,6 +413,11 @@ export default function DepositarPage() {
               <span>Saldo creditado</span>
               <span className="text-emerald-600 dark:text-emerald-400">{brl(amountCents)}</span>
             </div>
+            {method === "boleto" && (
+              <p className="pt-1 text-[11px]" style={{ color: "var(--text-2)" }}>
+                Boleto pode levar até 1-2 dias úteis para compensar.
+              </p>
+            )}
           </div>
         )}
 
@@ -304,9 +433,11 @@ export default function DepositarPage() {
           {loading ? (
             <span className="flex items-center justify-center gap-2">
               <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-              Gerando PIX...
+              {method === "pix" ? "Gerando PIX..." : "Gerando boleto..."}
             </span>
-          ) : `Gerar PIX de ${amountCents >= 500 ? brl(amountCents) : "..."}`}
+          ) : method === "pix"
+            ? `Gerar PIX de ${amountCents >= 500 ? brl(amountCents) : "..."}`
+            : `Gerar boleto de ${amountCents >= 500 ? brl(amountCents) : "..."}`}
         </button>
       </form>
     </div>
