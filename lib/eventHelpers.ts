@@ -1,21 +1,29 @@
 /**
  * Pure event/market helpers — NO prisma import, so they are safe to use from
- * Client Components (e.g. the carousel). Decision (b): each child shows its RAW
- * probability from its own pool; percentages across siblings do not sum to 100%.
+ * Client Components (e.g. the carousel). Prices now come from the LMSR engine
+ * (lib/amm.ts): each option's probability is its LMSR price, derived from the
+ * outstanding `shares` and the market's `liquidity`. Percentages across the
+ * options of ONE market sum to 100%.
  */
+import { priceCents } from "./amm"
 
-type OptionLike = { label: string; totalBet: number }
+type PriceOption = { label: string; shares: number }
 
 /**
- * Raw SIM probability of a binary child. Returns null when there is NO pool —
- * absence of a pool is absence of a price, not a 50% chance. The UI renders
- * null as a muted "—", never as a number.
+ * LMSR price (in cents, 0..100) of the option with `label`. Returns null when
+ * the market is UNTRADED (all shares 0) — absence of trading is absence of a
+ * price, not a coin-flip. The UI renders null as a muted "—", never a number.
  */
-export function childYesPct(options: OptionLike[]): number | null {
-  const yes = options.find((o) => o.label === "SIM")?.totalBet ?? 0
-  const no = options.find((o) => o.label === "NÃO")?.totalBet ?? 0
-  const pool = yes + no
-  return pool > 0 ? Math.round((yes / pool) * 100) : null
+export function optionPct(options: PriceOption[], liquidity: number, label: string): number | null {
+  if (!options.some((o) => o.shares > 0)) return null
+  const idx = options.findIndex((o) => o.label === label)
+  if (idx < 0) return null
+  return priceCents(options.map((o) => o.shares), liquidity, idx)
+}
+
+/** SIM price (cents) of a binary market/child, or null when untraded. */
+export function childYesPct(options: PriceOption[], liquidity: number): number | null {
+  return optionPct(options, liquidity, "SIM")
 }
 
 /** Decimal payout odds from a probability; no price → "—x". */
@@ -24,9 +32,9 @@ export function oddsLabel(pct: number | null, hasPool: boolean): string {
   return `${(100 / pct).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} x`
 }
 
-/** Whether a binary child has any stake at all. */
-export function childHasPool(options: OptionLike[]): boolean {
-  return options.some((o) => o.totalBet > 0)
+/** Whether a market has been traded at all (has any outstanding contracts). */
+export function childHasPool(options: { shares: number }[]): boolean {
+  return options.some((o) => o.shares > 0)
 }
 
 /** Event volume = sum of all children's pools. */

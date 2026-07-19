@@ -1,16 +1,13 @@
 import Link from "next/link"
 import MarketImage from "@/app/components/MarketImage"
 import { volLabel, OutcomeRow } from "@/app/components/cardParts"
-import { oddsLabel } from "@/lib/events"
+import { oddsLabel, childYesPct, childHasPool, optionPct } from "@/lib/events"
 
 export default function MarketCard({ market }: { market: any; index?: number }) {
-  const yesOpt = market.options.find((o: any) => o.label === "SIM")
-  const noOpt  = market.options.find((o: any) => o.label === "NÃO")
   const isBinary = market.type === "BINARY"
-  const pool   = market.options.reduce((s: number, o: any) => s + o.totalBet, 0)
-  const hasPool = pool > 0
-  // No pool → null (shown as "—"), never an invented 50%.
-  const yesPct = hasPool ? Math.round(((yesOpt?.totalBet ?? 0) / pool) * 100) : null
+  // Prices come from the LMSR engine (shares + liquidity). Untraded → null ("—").
+  const hasPool = childHasPool(market.options)
+  const yesPct = childYesPct(market.options, market.liquidity)
   const noPct  = yesPct === null ? null : 100 - yesPct
   const isOpen = market.status === "OPEN"
 
@@ -62,7 +59,7 @@ export default function MarketCard({ market }: { market: any; index?: number }) 
         )}
 
         {!isBinary && isOpen && market.options.slice(0, 4).map((opt: any, i: number) => {
-          const pct = hasPool ? Math.round((opt.totalBet / pool) * 100) : null
+          const pct = optionPct(market.options, market.liquidity, opt.label)
           return (
             <OutcomeRow key={opt.id} href={`/mercados/${market.id}?lado=${encodeURIComponent(opt.label)}`}
               blockColor="var(--card-2)" name={opt.label} underline={i === 0 ? "var(--green)" : "#2f6ff5"}

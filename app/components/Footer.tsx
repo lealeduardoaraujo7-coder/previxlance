@@ -14,7 +14,7 @@ const PLATFORM = [
   { label: "Depositar", href: "/depositar" },
   { label: "Sacar", href: "/sacar" },
   { label: "Meu perfil", href: "/perfil" },
-  { label: "Minhas apostas", href: "/apostas" },
+  { label: "Minhas posições", href: "/apostas" },
 ]
 
 const LEGAL = [

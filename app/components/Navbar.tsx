@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, Suspense } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { useTheme } from "next-themes"
 import { useTranslation, type Lang } from "./TranslationProvider"
+import { optionPct } from "@/lib/eventHelpers"
 
 const LANGUAGES: { code: Lang; label: string; flag: string }[] = [
   { code: "pt-BR", label: "Português (BR)", flag: "🇧🇷" },
@@ -18,7 +19,8 @@ type TrendingMarket = {
   category: string
   imageUrl: string | null
   totalPool: number
-  options: { label: string; totalBet: number }[]
+  liquidity: number
+  options: { label: string; shares: number }[]
   _count: { bets: number }
 }
 
@@ -102,10 +104,16 @@ function SearchBar({ className = "" }: { className?: string }) {
 
   function brl(n: number) { return (n / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) }
 
-  function topPct(m: TrendingMarket) {
-    const top = m.options[0]
-    if (!top || m.totalPool === 0) return null
-    return Math.round((top.totalBet / m.totalPool) * 100)
+  // Leading option by LMSR price. Untraded market → null (shows nothing).
+  function topOption(m: TrendingMarket): { label: string; pct: number } | null {
+    if (!m.options.some((o) => o.shares > 0)) return null
+    let best: string | null = null
+    let bestPct = -1
+    for (const o of m.options) {
+      const p = optionPct(m.options, m.liquidity, o.label)
+      if (p != null && p > bestPct) { bestPct = p; best = o.label }
+    }
+    return best ? { label: best, pct: bestPct } : null
   }
 
   return (
@@ -150,8 +158,7 @@ function SearchBar({ className = "" }: { className?: string }) {
           {/* Market rows */}
           <div className="pb-2">
             {trending.map((m) => {
-              const pct = topPct(m)
-              const top = m.options[0]
+              const top = topOption(m)
               return (
                 <button
                   key={m.id}
@@ -179,9 +186,9 @@ function SearchBar({ className = "" }: { className?: string }) {
                   </div>
 
                   {/* Right: probability */}
-                  {pct !== null && top && (
+                  {top && (
                     <div className="flex-shrink-0 text-right">
-                      <p className="text-sm font-bold tabular-nums" style={{ color: "#00C853" }}>{pct}%</p>
+                      <p className="text-sm font-bold tabular-nums" style={{ color: "#00C853" }}>{top.pct}%</p>
                       <p className="text-[10px] leading-tight" style={{ color: "var(--text-2)" }}>{top.label}</p>
                     </div>
                   )}

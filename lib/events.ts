@@ -4,7 +4,7 @@ import { sortChildrenByPool } from "@/lib/eventHelpers"
 // Re-export the pure helpers so existing server imports (`@/lib/events`) keep
 // working. Client Components must import them from `@/lib/eventHelpers` directly
 // to avoid pulling prisma into the client bundle.
-export { childYesPct, oddsLabel, childHasPool, eventVolume, sortChildrenByPool } from "@/lib/eventHelpers"
+export { childYesPct, optionPct, oddsLabel, childHasPool, eventVolume, sortChildrenByPool } from "@/lib/eventHelpers"
 
 const childInclude = { options: true, _count: { select: { bets: true } }, categoryRef: true } as const
 

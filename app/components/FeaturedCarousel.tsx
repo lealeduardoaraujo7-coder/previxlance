@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import MarketImage from "@/app/components/MarketImage"
 import { OutcomeRow, volLabel } from "@/app/components/cardParts"
-import { childYesPct, childHasPool, oddsLabel, eventVolume, sortChildrenByPool } from "@/lib/eventHelpers"
+import { childYesPct, childHasPool, optionPct, oddsLabel, eventVolume, sortChildrenByPool } from "@/lib/eventHelpers"
 
 type Item =
   | { kind: "market"; id: string; market: any; volume: number }
@@ -39,10 +39,8 @@ function SlideHeader({ imageUrl, category, categoryName, title, sub, collection 
 
 function MarketSlide({ market }: { market: any }) {
   const isBinary = market.type === "BINARY"
-  const pool = market.options.reduce((s: number, o: any) => s + o.totalBet, 0)
-  const hasPool = pool > 0
-  const yes = market.options.find((o: any) => o.label === "SIM")
-  const yesPct = hasPool ? Math.round(((yes?.totalBet ?? 0) / pool) * 100) : null
+  const hasPool = childHasPool(market.options)
+  const yesPct = childYesPct(market.options, market.liquidity)
   const noPct = yesPct === null ? null : 100 - yesPct
 
   return (
@@ -58,7 +56,7 @@ function MarketSlide({ market }: { market: any }) {
           </>
         ) : (
           market.options.slice(0, 4).map((opt: any, i: number) => {
-            const pct = hasPool ? Math.round((opt.totalBet / pool) * 100) : null
+            const pct = optionPct(market.options, market.liquidity, opt.label)
             return <OutcomeRow key={opt.id} href={`/mercados/${market.id}?lado=${encodeURIComponent(opt.label)}`}
               blockColor={SERIES_BLOCK[i % 4]} name={opt.label} underline={SERIES_UNDER[i % 4]} pct={pct} odds={oddsLabel(pct, hasPool)} />
           })
@@ -85,7 +83,7 @@ function EventSlide({ event }: { event: any }) {
 
       <div className="mt-5 flex flex-col gap-2.5">
         {shown.map((child: any, i: number) => {
-          const pct = childYesPct(child.options)
+          const pct = childYesPct(child.options, child.liquidity)
           return <OutcomeRow key={child.id} href={`/mercados/${child.id}?lado=SIM`}
             blockColor={SERIES_BLOCK[i % 4]} imageUrl={child.shortImageUrl} name={child.shortLabel || child.title} underline={SERIES_UNDER[i % 4]}
             pct={pct} odds={oddsLabel(pct, childHasPool(child.options))} />

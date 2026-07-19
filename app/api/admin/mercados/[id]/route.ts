@@ -113,36 +113,41 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ ok: true })
   }
 
-  // --- cancel (refund all bets) ---
+  // --- cancel (void: refund each user their NET cash invested) ---
   if (action === "cancel") {
     if (market.status === "CANCELLED") return NextResponse.json({ error: "Mercado já cancelado" }, { status: 400 })
     if (market.status === "RESOLVED") return NextResponse.json({ error: "Não é possível cancelar um mercado já resolvido" }, { status: 400 })
+    // Net cash per user = Σ BUY amount − Σ SELL amount. Returns everyone to even.
+    const net = new Map<string, number>()
+    for (const bet of market.bets) {
+      const delta = bet.side === "SELL" ? -bet.amount : bet.amount
+      net.set(bet.userId, (net.get(bet.userId) ?? 0) + delta)
+    }
     await prisma.$transaction(async (tx) => {
       await tx.market.update({ where: { id }, data: { status: "CANCELLED" } })
-      for (const bet of market.bets) {
-        await tx.user.update({ where: { id: bet.userId }, data: { balance: { increment: bet.amount } } })
+      for (const [userId, amount] of net) {
+        if (amount > 0) await tx.user.update({ where: { id: userId }, data: { balance: { increment: amount } } })
       }
     })
     return NextResponse.json({ ok: true })
   }
 
-  // --- resolve ---
+  // --- resolve (LMSR: each winning contract pays 100¢; fees were taken per trade) ---
   if (resolution) {
     if (market.status !== "OPEN" && market.status !== "CLOSED") {
       return NextResponse.json({ error: "Mercado não pode ser resolvido" }, { status: 400 })
     }
     const winningOption = market.options.find((o) => o.label === resolution)
     if (!winningOption) return NextResponse.json({ error: "Opção inválida" }, { status: 400 })
-    const winningBets = market.bets.filter((b) => b.optionId === winningOption.id)
-    const fee = Math.floor(market.totalPool * 0.02)
-    const prizePool = market.totalPool - fee
-    const winningTotal = winningOption.totalBet
+    const winningPositions = await prisma.position.findMany({
+      where: { marketId: id, optionId: winningOption.id },
+    })
     await prisma.$transaction(async (tx) => {
       await tx.market.update({ where: { id }, data: { status: "RESOLVED", resolution, resolvedAt: new Date() } })
-      for (const bet of winningBets) {
-        const payout = winningTotal > 0 ? Math.floor((bet.amount / winningTotal) * prizePool) : 0
-        await tx.bet.update({ where: { id: bet.id }, data: { payout } })
-        await tx.user.update({ where: { id: bet.userId }, data: { balance: { increment: payout } } })
+      for (const pos of winningPositions) {
+        if (pos.shares <= 0) continue
+        const payout = Math.round(pos.shares * 100) // 1 contract = 100¢
+        await tx.user.update({ where: { id: pos.userId }, data: { balance: { increment: payout } } })
       }
     })
     return NextResponse.json({ ok: true })

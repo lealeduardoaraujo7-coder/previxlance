@@ -24,6 +24,7 @@ model User {
   accounts     Account[]
   sessions     Session[]
   bets         Bet[]
+  positions    Position[]
   transactions Transaction[]
   comments     Comment[]
   commentLikes CommentLike[]
@@ -118,6 +119,9 @@ model Market {
   type        String    @default("BINARY")
   status      String    @default("OPEN")
   totalPool   Int       @default(0)
+  // LMSR liquidity parameter b (contracts). Deeper market = price moves less per
+  // trade. Max house subsidy ≈ b·ln(n)·100¢. See lib/amm.ts.
+  liquidity   Float     @default(100)
   closesAt    DateTime
   resolvedAt  DateTime?
   resolution  String?
@@ -140,6 +144,7 @@ model Market {
 
   options      MarketOption[]
   bets         Bet[]
+  positions    Position[]
   comments     Comment[]
   savedBy      SavedMarket[]
 
@@ -177,18 +182,48 @@ model MarketOption {
   marketId String
   label    String
   totalBet Int    @default(0)
+  // LMSR outstanding contracts for this outcome (the "q_i"). Prices are derived
+  // from the shares of all sibling options via lib/amm.ts.
+  shares   Float  @default(0)
 
-  market Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
-  bets   Bet[]
+  market    Market     @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  bets      Bet[]
+  positions Position[]
 }
 
+/// A user's holding of contracts for one market outcome. Buying adds shares,
+/// selling removes them. On resolution, winning shares each pay 100¢.
+model Position {
+  id        String   @id @default(cuid())
+  userId    String
+  marketId  String
+  optionId  String
+  shares    Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  market Market       @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  option MarketOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, optionId])
+  @@index([marketId])
+  @@index([userId])
+}
+
+/// A trade record (history). `side` is BUY or SELL; `amount` is the CASH that
+/// moved (paid on BUY, received on SELL); `shares` is the contracts traded and
+/// `price` the per-contract price in ¢ at execution. `payout` is set at resolution.
 model Bet {
   id        String   @id @default(cuid())
   userId    String
   marketId  String
   optionId  String?
   outcome   String?
+  side      String   @default("BUY")
   amount    Int
+  shares    Float    @default(0)
+  price     Int      @default(0)
   payout    Int?
   createdAt DateTime @default(now())
 

@@ -7,8 +7,8 @@ export async function GET() {
     orderBy: [{ totalPool: "desc" }, { createdAt: "desc" }],
     take: 8,
     select: {
-      id: true, title: true, category: true, totalPool: true, imageUrl: true,
-      options: { select: { label: true, totalBet: true }, orderBy: { totalBet: "desc" }, take: 1 },
+      id: true, title: true, category: true, totalPool: true, imageUrl: true, liquidity: true,
+      options: { select: { label: true, shares: true } },
       _count: { select: { bets: true } },
     },
   })

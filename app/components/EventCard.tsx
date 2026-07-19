@@ -50,7 +50,7 @@ export default function EventCard({ event }: { event: any; index?: number }) {
       {/* Top-2 children by pool */}
       <div className="relative mt-4 flex flex-col gap-2.5" style={{ zIndex: 1, pointerEvents: "none" }}>
         {top2.map((child: any, i: number) => {
-          const pct = childYesPct(child.options)
+          const pct = childYesPct(child.options, child.liquidity)
           return (
             <OutcomeRow key={child.id}
               href={`/mercados/${child.id}?lado=SIM`}
