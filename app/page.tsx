@@ -4,6 +4,7 @@ import FeaturedCarousel from "@/app/components/FeaturedCarousel"
 import LiveTicker from "@/app/components/LiveTicker"
 import MarketCard from "@/app/components/MarketCard"
 import EventCard from "@/app/components/EventCard"
+import DiscordCard from "@/app/components/DiscordCard"
 import { getFeaturedItems, getCarouselConfig } from "@/lib/featured"
 import { eventVolume } from "@/lib/events"
 import { getNavCategories } from "@/lib/categories"
@@ -88,6 +89,8 @@ export default async function HomePage({
 
       {/* ── Main content — grid renders immediately, no marketing landing ──── */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid lg:grid-cols-[1fr_300px] gap-6 items-start">
+          <div className="min-w-0">
 
         {!searchQuery && activeStatus === "OPEN" && featuredItems.length > 0 && (
           <FeaturedCarousel
@@ -188,6 +191,13 @@ export default async function HomePage({
             )}
           </div>
         )}
+          </div>
+
+          {/* Right sidebar */}
+          <aside className="hidden lg:block lg:sticky lg:top-24 space-y-4">
+            <DiscordCard />
+          </aside>
+        </div>
       </div>
     </div>
   )
