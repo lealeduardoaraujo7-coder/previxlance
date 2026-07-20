@@ -10,6 +10,7 @@ import FadingSidebar from "@/app/components/FadingSidebar"
 import { getFeaturedItems, getCarouselConfig } from "@/lib/featured"
 import { eventVolume } from "@/lib/events"
 import { getNavCategories } from "@/lib/categories"
+import { closeExpiredMarkets } from "@/lib/marketClose"
 
 const STATUS_TABS = [
   { value: "OPEN",     label: "Ao vivo"    },
@@ -22,6 +23,10 @@ export default async function HomePage({
   searchParams: Promise<{ categoria?: string; status?: string; q?: string; sort?: string }>
 }) {
   const { categoria, status, q, sort } = await searchParams
+
+  // Flip any market past its deadline to CLOSED before we read the grid.
+  await closeExpiredMarkets()
+
   const activeCategory = categoria ?? "TODOS"
   const activeStatus   = status   ?? "OPEN"
   const searchQuery    = q?.trim() ?? ""

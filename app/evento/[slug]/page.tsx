@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma"
 import MarketImage from "@/app/components/MarketImage"
 import { volLabel } from "@/app/components/cardParts"
 import { getEventBySlug, eventVolume } from "@/lib/events"
+import { closeExpiredMarkets } from "@/lib/marketClose"
 import EventTradeView, { type EventOutcome } from "./EventTradeView"
 
 /** Normalize for comparison: lowercase, strip accents, collapse whitespace. */
@@ -20,6 +21,7 @@ function titleAddsInfo(shortLabel: string | null, title: string) {
 
 export default async function EventoPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
+  await closeExpiredMarkets()
   const [event, session] = await Promise.all([getEventBySlug(slug), getServerSession(authOptions)])
   if (!event) notFound()
 

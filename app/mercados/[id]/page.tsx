@@ -7,6 +7,7 @@ import MarketImage from "@/app/components/MarketImage"
 import { volLabel } from "@/app/components/cardParts"
 import { sortChildrenByPool } from "@/lib/events"
 import { priceCents } from "@/lib/amm"
+import { closeExpiredMarkets } from "@/lib/marketClose"
 import MarketChart from "./MarketChart"
 import MarketTabs from "./MarketTabs"
 import TradePanel, { type Outcome } from "./TradePanel"
@@ -34,6 +35,8 @@ function timeLeft(d: Date | string) {
 export default async function MercadoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const session = await getServerSession(authOptions)
+
+  await closeExpiredMarkets()
 
   const market = await prisma.market.findUnique({
     where: { id },

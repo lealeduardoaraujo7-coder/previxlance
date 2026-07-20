@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { sharesForSpend, proceedsForShares, priceCents } from "@/lib/amm"
+import { closeExpiredMarkets } from "@/lib/marketClose"
 
 /**
  * Trade endpoint (LMSR engine). Replaces the old pool-bet logic.
@@ -21,6 +22,10 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
 
   const { marketId, optionId, side = "BUY", amount, shares } = await req.json()
+
+  // Halt trading on any market past its deadline before we read it, so the
+  // status check below rejects expired markets (no late bets, no late sells).
+  await closeExpiredMarkets()
 
   const [market, user] = await Promise.all([
     prisma.market.findUnique({ where: { id: marketId }, include: { options: true } }),
