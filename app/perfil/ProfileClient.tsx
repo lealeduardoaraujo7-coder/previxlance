@@ -47,7 +47,8 @@ export default function ProfileClient({
     const res = await fetch("/api/perfil/foto", { method: "POST", body: fd })
     const d = await res.json().catch(() => ({}))
     setAvatarLoading(false)
-    if (res.ok) { setAvatar(d.url); await update() }
+    // Pass the new URL so the JWT/session updates → the navbar avatar refreshes.
+    if (res.ok) { setAvatar(d.url); await update({ image: d.url }) }
     if (fileRef.current) fileRef.current.value = ""
   }
 
