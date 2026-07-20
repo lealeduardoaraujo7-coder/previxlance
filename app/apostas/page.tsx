@@ -4,31 +4,22 @@ import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { priceCents } from "@/lib/amm"
+import PortfolioTabs from "./PortfolioTabs"
 
 function brl(n: number) { return (n / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) }
-function timeAgo(date: Date) {
-  const diff = Date.now() - date.getTime()
-  if (diff < 3_600_000) return `${Math.max(1, Math.floor(diff / 60_000))}m atrás`
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h atrás`
-  return `${Math.floor(diff / 86_400_000)}d atrás`
-}
 
 export default async function MinhasPosicoesPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
   const userId = session.user.id
 
-  const [positions, costAgg, history, user] = await Promise.all([
+  const [positions, costAgg, user] = await Promise.all([
     prisma.position.findMany({
       where: { userId, shares: { gt: 0.0001 } },
       include: { market: { include: { options: true } }, option: { select: { label: true } } },
       orderBy: { updatedAt: "desc" },
     }),
     prisma.bet.groupBy({ by: ["optionId", "side"], where: { userId }, _sum: { amount: true } }),
-    prisma.bet.findMany({
-      where: { userId }, orderBy: { createdAt: "desc" }, take: 25,
-      include: { market: { select: { id: true, title: true } }, option: { select: { label: true } } },
-    }),
     prisma.user.findUnique({ where: { id: userId }, select: { balance: true } }),
   ])
 
@@ -76,69 +67,8 @@ export default async function MinhasPosicoesPage() {
         ))}
       </div>
 
-      {/* Open positions */}
-      {rows.length === 0 ? (
-        <div className="rounded-2xl p-12 text-center mb-8" style={card}>
-          <p className="mb-4" style={{ color: "var(--text-2)" }}>Você ainda não tem posições abertas.</p>
-          <Link href="/" className="inline-block rounded-xl px-5 py-2.5 text-sm font-bold text-white"
-            style={{ background: "linear-gradient(135deg,#00c076,#009e64)" }}>Explorar mercados</Link>
-        </div>
-      ) : (
-        <div className="rounded-2xl overflow-hidden mb-8" style={card}>
-          {rows.map(({ p, price, value, pnl }, i) => {
-            const isNao = p.option?.label === "NÃO"
-            const clr = isNao ? "var(--red)" : "var(--green)"
-            const dim = isNao ? "var(--red-dim)" : "var(--green-dim)"
-            return (
-              <Link key={p.id} href={`/mercados/${p.marketId}`}
-                className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-[var(--card-2)]"
-                style={{ borderTop: i > 0 ? "1px solid var(--border)" : undefined }}>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[14px] font-semibold truncate" style={{ color: "var(--text-0)" }}>{p.market.title}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider" style={{ background: dim, color: clr }}>{p.option?.label}</span>
-                    <span className="text-[11px] tabular-nums" style={{ color: "var(--text-2)" }}>{p.shares.toFixed(1)} contratos · {price}¢</span>
-                  </div>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="text-sm font-bold tabular-nums" style={{ color: "var(--text-0)" }}>{brl(value)}</p>
-                  <p className="text-[11px] font-semibold tabular-nums" style={{ color: pnl >= 0 ? "var(--green)" : "var(--red)" }}>
-                    {pnl >= 0 ? "+" : ""}{brl(pnl)}
-                  </p>
-                </div>
-              </Link>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Trade history */}
-      {history.length > 0 && (
-        <>
-          <h2 className="text-sm font-bold mb-3" style={{ color: "var(--text-0)" }}>Histórico</h2>
-          <div className="rounded-2xl overflow-hidden" style={card}>
-            {history.map((b, i) => {
-              const isNao = b.option?.label === "NÃO"
-              const clr = isNao ? "var(--red)" : "var(--green)"
-              return (
-                <Link key={b.id} href={`/mercados/${b.market.id}`}
-                  className="flex items-center justify-between px-4 py-3 transition-colors hover:bg-[var(--card-2)]"
-                  style={{ borderTop: i > 0 ? "1px solid var(--border)" : undefined }}>
-                  <div className="min-w-0 flex-1 text-xs">
-                    <p className="font-medium truncate" style={{ color: "var(--text-0)" }}>{b.market.title}</p>
-                    <p className="mt-0.5" style={{ color: "var(--text-2)" }}>
-                      {b.side === "SELL" ? "Vendeu" : "Comprou"} <span style={{ color: clr }}>{b.option?.label}</span> · {timeAgo(b.createdAt)}
-                    </p>
-                  </div>
-                  <span className="text-sm font-bold tabular-nums ml-3" style={{ color: b.side === "SELL" ? "var(--green)" : "var(--text-0)" }}>
-                    {b.side === "SELL" ? "+" : "−"}{brl(b.amount)}
-                  </span>
-                </Link>
-              )
-            })}
-          </div>
-        </>
-      )}
+      {/* CARGOS · PEDIDOS · HISTÓRIA */}
+      <PortfolioTabs />
     </div>
   )
 }

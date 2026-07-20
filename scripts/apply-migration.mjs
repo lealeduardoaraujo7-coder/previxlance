@@ -21,6 +21,10 @@ async function tableExists(name) {
   const r = await db.execute({ sql: "SELECT name FROM sqlite_master WHERE type='table' AND name=?", args: [name] })
   return r.rows.length > 0
 }
+async function indexExists(name) {
+  const r = await db.execute({ sql: "SELECT name FROM sqlite_master WHERE type='index' AND name=?", args: [name] })
+  return r.rows.length > 0
+}
 async function hasColumn(table, col) {
   const r = await db.execute(`PRAGMA table_info("${table}")`)
   return r.rows.some((row) => row.name === col)
@@ -45,6 +49,15 @@ async function main() {
   await addColumn("Bet", "side", `"side" TEXT NOT NULL DEFAULT 'BUY'`)
   await addColumn("Bet", "shares", `"shares" REAL NOT NULL DEFAULT 0`)
   await addColumn("Bet", "price", `"price" INTEGER NOT NULL DEFAULT 0`)
+
+  // Public @handle fields on User (add_username migration).
+  await addColumn("User", "username", `"username" TEXT`)
+  await addColumn("User", "usernameChanges", `"usernameChanges" INTEGER NOT NULL DEFAULT 0`)
+  await addColumn("User", "usernameChangedAt", `"usernameChangedAt" DATETIME`)
+  if (!(await indexExists("User_username_key"))) {
+    console.log("[apply-migration] + unique index User.username")
+    await db.execute(`CREATE UNIQUE INDEX "User_username_key" ON "User"("username")`)
+  }
 
   if (!(await tableExists("Position"))) {
     console.log("[apply-migration] + Position table")

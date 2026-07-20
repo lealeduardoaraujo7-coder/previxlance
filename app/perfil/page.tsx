@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import FotoUpload from "./FotoUpload"
+import UsernameEditor from "./UsernameEditor"
 
 function brl(cents: number) {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
@@ -26,8 +27,9 @@ export default async function PerfilPage() {
     <div className="mx-auto max-w-3xl px-4 py-10">
       <FotoUpload currentImage={user?.image} />
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{user?.name}</h1>
-        <p className="text-sm text-gray-400 dark:text-zinc-500">{user?.email}</p>
+        <UsernameEditor currentUsername={user?.username ?? null} changes={user?.usernameChanges ?? 0} />
+        <p className="text-sm text-gray-400 dark:text-zinc-500 mt-1">{user?.name} · {user?.email}</p>
+        <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-0.5">Seu nome real e e-mail são privados — só o @nome de usuário aparece publicamente.</p>
       </div>
 
       <div className="grid grid-cols-3 gap-4 mb-10">

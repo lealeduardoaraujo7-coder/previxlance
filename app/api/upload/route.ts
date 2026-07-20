@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { writeFile, mkdir } from "fs/promises"
-import path from "path"
+import { put } from "@vercel/blob"
 import { randomUUID } from "crypto"
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
@@ -21,18 +20,23 @@ export async function POST(req: NextRequest) {
   if (!ALLOWED_TYPES.includes(file.type)) {
     return NextResponse.json({ error: "Tipo de arquivo não suportado. Use JPG, PNG, WebP ou GIF." }, { status: 400 })
   }
-
   if (file.size > MAX_SIZE) {
     return NextResponse.json({ error: "Arquivo muito grande. Máximo 5MB." }, { status: 400 })
   }
 
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "jpg"
-  const filename = `${randomUUID()}.${ext}`
-  const uploadDir = path.join(process.cwd(), "public", "uploads")
-
-  await mkdir(uploadDir, { recursive: true })
-  const buffer = Buffer.from(await file.arrayBuffer())
-  await writeFile(path.join(uploadDir, filename), buffer)
-
-  return NextResponse.json({ url: `/uploads/${filename}` })
+  try {
+    // Persistent object storage (works on Vercel serverless, unlike disk writes).
+    const { url } = await put(`uploads/${randomUUID()}.${ext}`, file, {
+      access: "public",
+      contentType: file.type,
+    })
+    return NextResponse.json({ url })
+  } catch (err) {
+    console.error("[upload] Vercel Blob error:", err)
+    return NextResponse.json(
+      { error: "Armazenamento de imagens não configurado (Vercel Blob). Verifique BLOB_READ_WRITE_TOKEN." },
+      { status: 500 },
+    )
+  }
 }

@@ -6,6 +6,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { useTheme } from "next-themes"
 import { useTranslation, type Lang } from "./TranslationProvider"
 import { optionPct } from "@/lib/eventHelpers"
+import { openAuth } from "./AuthModal"
 
 const LANGUAGES: { code: Lang; label: string; flag: string }[] = [
   { code: "pt-BR", label: "Português (BR)", flag: "🇧🇷" },
@@ -552,16 +553,16 @@ export function Navbar() {
                     {t("nav.howItWorks")}
                   </Link>
                   <ThemeToggleInline />
-                  <Link href="/login"
+                  <button onClick={() => openAuth("login")}
                     className="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors hover:bg-gray-100 dark:hover:bg-zinc-800"
                     style={{ color: "var(--text-0)" }}>
                     {t("nav.signIn")}
-                  </Link>
-                  <Link href="/register"
+                  </button>
+                  <button onClick={() => openAuth("signup")}
                     className="rounded-lg px-4 py-1.5 text-sm font-semibold text-white transition-all hover:opacity-90"
                     style={{ background: "linear-gradient(135deg,#00c076,#009e64)" }}>
                     {t("nav.signUp")}
-                  </Link>
+                  </button>
                 </>
               )}
 
@@ -636,8 +637,8 @@ export function Navbar() {
                 <Link href="/suporte" onClick={closeAll} className="block rounded-lg px-3 py-2 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800" style={{ color: "var(--text-2)" }}>{t("nav.support")}</Link>
               </div>
               <div className="flex gap-2 pt-1">
-                <Link href="/login" onClick={closeAll} className="flex-1 rounded-xl border py-2.5 text-center text-sm transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800" style={{ borderColor: "var(--border-2)", color: "var(--text-0)" }}>{t("nav.signIn")}</Link>
-                <Link href="/register" onClick={closeAll} className="flex-1 rounded-xl bg-emerald-500 py-2.5 text-center text-sm font-medium text-white hover:bg-emerald-400">{t("nav.signUp")}</Link>
+                <button onClick={() => { closeAll(); openAuth("login") }} className="flex-1 rounded-xl border py-2.5 text-center text-sm transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800" style={{ borderColor: "var(--border-2)", color: "var(--text-0)" }}>{t("nav.signIn")}</button>
+                <button onClick={() => { closeAll(); openAuth("signup") }} className="flex-1 rounded-xl bg-emerald-500 py-2.5 text-center text-sm font-medium text-white hover:bg-emerald-400">{t("nav.signUp")}</button>
               </div>
             </>
           )}

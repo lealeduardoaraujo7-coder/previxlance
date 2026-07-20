@@ -55,9 +55,9 @@ export default function FotoUpload({ currentImage }: { currentImage?: string | n
           {loading ? "Enviando..." : "Alterar foto de perfil"}
         </button>
         {error && <p className="text-xs text-red-500 mt-0.5">{error}</p>}
-        <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">JPG, PNG ou WebP · Máx 3MB</p>
+        <p className="text-xs text-gray-400 dark:text-zinc-500 mt-0.5">JPG, PNG, WebP ou GIF · Máx 5MB</p>
       </div>
-      <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFile} />
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
     </div>
   )
 }
