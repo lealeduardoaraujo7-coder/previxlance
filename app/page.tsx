@@ -6,6 +6,7 @@ import MarketCard from "@/app/components/MarketCard"
 import EventCard from "@/app/components/EventCard"
 import DiscordCard from "@/app/components/DiscordCard"
 import ProposeCard from "@/app/components/ProposeCard"
+import FadingSidebar from "@/app/components/FadingSidebar"
 import { getFeaturedItems, getCarouselConfig } from "@/lib/featured"
 import { eventVolume } from "@/lib/events"
 import { getNavCategories } from "@/lib/categories"
@@ -194,10 +195,12 @@ export default async function HomePage({
         )}
           </div>
 
-          {/* Right sidebar */}
-          <aside className="hidden lg:block lg:sticky lg:top-24 space-y-4">
-            <DiscordCard />
-            <ProposeCard />
+          {/* Right sidebar — fades out as the page scrolls (not sticky) */}
+          <aside className="hidden lg:block">
+            <FadingSidebar>
+              <DiscordCard />
+              <ProposeCard />
+            </FadingSidebar>
           </aside>
         </div>
       </div>

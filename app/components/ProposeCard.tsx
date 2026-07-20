@@ -6,7 +6,8 @@ const KEY = "previx_propose_card_dismissed"
 
 /**
  * "Propose a market" announcement for the home right sidebar (below the Discord
- * card). Highlights the R$0,50 reward for each proposal the admin approves.
+ * card). Banner art lives in /public/previx_propor.svg — swap that file to
+ * change the artwork. Highlights the R$0,50 reward for each approved proposal.
  * Dismissible for the browser session only (sessionStorage, no localStorage).
  */
 export default function ProposeCard() {
@@ -33,23 +34,8 @@ export default function ProposeCard() {
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
       </button>
 
-      {/* Banner */}
-      <div className="relative px-4 pt-5 pb-4" style={{ background: "linear-gradient(135deg,#0b3b2a 0%,#0f5138 55%,#127a4f 100%)" }}>
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl mb-3" style={{ background: "rgba(255,255,255,0.14)" }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V17h6v-.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z" />
-          </svg>
-        </div>
-        <h3 className="text-[17px] font-bold text-white leading-tight">Proponha um mercado</h3>
-        <p className="text-[12.5px] mt-1 leading-relaxed" style={{ color: "rgba(255,255,255,0.82)" }}>
-          Tem uma boa ideia de aposta? Sugira um mercado — se for aprovado pela equipe, você ganha saldo.
-        </p>
-        <span className="inline-flex items-center gap-1.5 mt-3 rounded-full px-2.5 py-1 text-[12px] font-bold"
-          style={{ background: "rgba(255,255,255,0.16)", color: "#fff" }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
-          Ganhe R$0,50 por mercado aprovado
-        </span>
-      </div>
+      {/* Banner art — replace /public/previx_propor.svg to change it */}
+      <img src="/previx_propor.svg" alt="Proponha um mercado" className="block w-full" draggable={false} />
 
       {/* CTA */}
       <div className="p-3">
