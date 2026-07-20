@@ -7,6 +7,7 @@ import MarketActions from "./components/MarketActions"
 import PendingMarketActions from "./components/PendingMarketActions"
 import MarketImage from "@/app/components/MarketImage"
 import SeedButton from "./components/SeedButton"
+import SeedCuradosButton from "./components/SeedCuradosButton"
 import { closeExpiredMarkets } from "@/lib/marketClose"
 
 function brl(cents: number) {
@@ -86,6 +87,10 @@ export default async function AdminPage() {
             + Novo Mercado
           </Link>
         </div>
+      </div>
+
+      <div className="mb-6 flex justify-end">
+        <SeedCuradosButton />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
