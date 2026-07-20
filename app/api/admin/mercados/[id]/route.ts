@@ -85,11 +85,21 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   })
   if (!market) return NextResponse.json({ error: "Mercado não encontrado" }, { status: 404 })
 
-  // --- approve pending ---
+  // --- approve pending (reward the proposer R$0,50 = 50 cents) ---
   if (action === "approve") {
     if (market.status !== "PENDING") return NextResponse.json({ error: "Mercado não está pendente" }, { status: 400 })
-    await prisma.market.update({ where: { id }, data: { status: "OPEN" } })
-    return NextResponse.json({ ok: true })
+    const PROPOSAL_REWARD = 50 // centavos = R$0,50
+    // The proposer is stored by e-mail on the market (User.email is unique).
+    const proposer = market.proposedByEmail
+      ? await prisma.user.findUnique({ where: { email: market.proposedByEmail }, select: { id: true } })
+      : null
+    await prisma.$transaction(async (tx) => {
+      await tx.market.update({ where: { id }, data: { status: "OPEN" } })
+      if (proposer) {
+        await tx.user.update({ where: { id: proposer.id }, data: { balance: { increment: PROPOSAL_REWARD } } })
+      }
+    })
+    return NextResponse.json({ ok: true, rewarded: !!proposer, reward: PROPOSAL_REWARD })
   }
 
   // --- reject pending ---
