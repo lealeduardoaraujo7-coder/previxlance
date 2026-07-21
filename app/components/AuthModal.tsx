@@ -15,6 +15,9 @@ export default function AuthModal() {
   const [providers, setProviders] = useState<Record<string, unknown> | null>(null)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [username, setUsername] = useState("")
+  const [usernameEdited, setUsernameEdited] = useState(false)
+  const [agree, setAgree] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
@@ -23,11 +26,23 @@ export default function AuthModal() {
   useEffect(() => {
     function onOpen(e: Event) {
       const m = (e as CustomEvent).detail?.mode === "signup" ? "signup" : "login"
-      setMode(m); setEmailStep(false); setError(""); setEmail(""); setPassword(""); setOpen(true)
+      setMode(m); setEmailStep(false); setError(""); setEmail(""); setPassword("")
+      setUsername(""); setUsernameEdited(false); setAgree(false); setOpen(true)
     }
     window.addEventListener("previx:auth", onOpen as EventListener)
     return () => window.removeEventListener("previx:auth", onOpen as EventListener)
   }, [])
+
+  // Suggest a handle from the e-mail local-part until the user edits it manually.
+  function suggestUsername(mail: string): string {
+    let base = mail.split("@")[0].toLowerCase().replace(/[^a-z0-9_]/g, "")
+    if (base.length < 3) base = `user_${Math.random().toString(36).slice(2, 7)}`
+    return base.slice(0, 20)
+  }
+  function onEmailChange(v: string) {
+    setEmail(v)
+    if (mode === "signup" && !usernameEdited) setUsername(suggestUsername(v))
+  }
 
   function close() { if (!loading) setOpen(false) }
 
@@ -46,7 +61,7 @@ export default function AuthModal() {
     if (mode === "signup") {
       const reg = await fetch("/api/auth/register", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: email.split("@")[0], email, password }),
+        body: JSON.stringify({ name: username || email.split("@")[0], email, password, username }),
       })
       const data = await reg.json().catch(() => ({}))
       if (!reg.ok) { setLoading(false); setError(data.error || "Erro ao cadastrar"); return }
@@ -113,18 +128,49 @@ export default function AuthModal() {
               </div>
             ) : (
               <div className="space-y-3">
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com"
-                  className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none"
-                  style={{ background: "var(--card-2)", border: "1px solid var(--border-2)", color: "var(--text-0)" }} />
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Senha (mín. 6)"
-                  onKeyDown={(e) => { if (e.key === "Enter") emailSubmit() }}
-                  className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none"
-                  style={{ background: "var(--card-2)", border: "1px solid var(--border-2)", color: "var(--text-0)" }} />
+                <div>
+                  <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-2)" }}>E-mail</label>
+                  <input type="email" value={email} onChange={(e) => onEmailChange(e.target.value)} placeholder="seu@email.com"
+                    className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none"
+                    style={{ background: "var(--card-2)", border: "1px solid var(--border-2)", color: "var(--text-0)" }} />
+                </div>
+
+                {mode === "signup" && (
+                  <div>
+                    <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-2)" }}>Nome de usuário</label>
+                    <div className="flex items-center rounded-xl px-3" style={{ background: "var(--card-2)", border: "1px solid var(--border-2)" }}>
+                      <span className="text-sm font-semibold" style={{ color: "var(--text-2)" }}>@</span>
+                      <input type="text" value={username}
+                        onChange={(e) => { setUsernameEdited(true); setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20)) }}
+                        placeholder="seu_usuario"
+                        className="w-full bg-transparent px-1.5 py-3 text-sm focus:outline-none"
+                        style={{ color: "var(--text-0)" }} />
+                    </div>
+                    <p className="mt-1 text-[10px]" style={{ color: "var(--text-2)" }}>Sugerimos um, mas você pode trocar. Dá para mudar depois no perfil.</p>
+                  </div>
+                )}
+
+                <div>
+                  <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-2)" }}>Senha</label>
+                  <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mín. 6 caracteres"
+                    onKeyDown={(e) => { if (e.key === "Enter" && (mode === "login" || agree)) emailSubmit() }}
+                    className="w-full rounded-xl px-4 py-3 text-sm focus:outline-none"
+                    style={{ background: "var(--card-2)", border: "1px solid var(--border-2)", color: "var(--text-0)" }} />
+                </div>
+
                 {mode === "login" && (
                   <a href="/suporte" className="block text-xs" style={{ color: "var(--green)" }}>Esqueceu sua senha?</a>
                 )}
+
+                {mode === "signup" && (
+                  <label className="flex items-start gap-2 text-[11px] leading-snug cursor-pointer" style={{ color: "var(--text-2)" }}>
+                    <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 accent-emerald-500" />
+                    <span>Tenho 18+ anos e li e aceito os <a href="/termos" target="_blank" className="underline" style={{ color: "var(--green)" }}>Termos e Regras</a>.</span>
+                  </label>
+                )}
+
                 {error && <p className="text-xs" style={{ color: "var(--red)" }}>{error}</p>}
-                <button onClick={emailSubmit} disabled={loading || !email || password.length < 6}
+                <button onClick={emailSubmit} disabled={loading || !email || password.length < 6 || (mode === "signup" && (!agree || username.length < 3))}
                   className="w-full rounded-xl py-3 text-sm font-bold text-white transition-all disabled:opacity-50"
                   style={{ background: "linear-gradient(135deg,#00c076,#009e64)" }}>
                   {loading ? "..." : mode === "login" ? "Entrar" : "Criar conta"}
@@ -136,7 +182,11 @@ export default function AuthModal() {
             {/* Switch mode */}
             <p className="text-xs text-center mt-5" style={{ color: "var(--text-2)" }}>
               {mode === "login" ? "Novo por aqui? " : "Já tem conta? "}
-              <button onClick={() => { setMode(mode === "login" ? "signup" : "login"); setEmailStep(false); setError("") }}
+              <button onClick={() => {
+                  const next = mode === "login" ? "signup" : "login"
+                  setMode(next); setEmailStep(false); setError("")
+                  if (next === "signup" && email && !usernameEdited) setUsername(suggestUsername(email))
+                }}
                 className="font-semibold" style={{ color: "var(--green)" }}>
                 {mode === "login" ? "Inscreva-se" : "Conecte-se"}
               </button>
