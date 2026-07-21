@@ -3,20 +3,13 @@ import { useEffect, useRef, useState } from "react"
 import { useSession } from "next-auth/react"
 import Link from "next/link"
 import UsernameEditor from "./UsernameEditor"
+import { gradient, avatarInitial } from "@/lib/avatar"
 
 const brl = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 
 type Cargo = { marketId: string; mercado: string; opcao: string; shares: number; precoAtual: number; valorAtual: number }
 type Pedido = { marketId: string; mercado: string; lado: string; resultado: string; valor: number; shares: number; preco: number; data: string }
 type Historia = { marketId: string; mercado: string; status: string; custoTotal: number; pagamentoTotal: number; retornoTotal: number; retornoPct: number }
-
-/** Deterministic gradient for the avatar fallback (Polymarket-style blob). */
-function gradient(seed: string) {
-  let h = 0
-  for (const c of seed) h = (h * 31 + c.charCodeAt(0)) >>> 0
-  const a = h % 360, b = (h >> 3) % 360
-  return `conic-gradient(from ${h % 360}deg, hsl(${a},70%,55%), hsl(${b},75%,50%), hsl(${(a + 120) % 360},70%,55%), hsl(${a},70%,55%))`
-}
 
 export default function ProfileClient({
   username, changes, image, name, email, createdAt, balance,
@@ -77,7 +70,7 @@ export default function ProfileClient({
               <img src={avatar} alt="" className="h-full w-full object-cover" />
             ) : (
               <span className="flex h-full w-full items-center justify-center text-2xl font-black text-white" style={{ background: gradient(handle) }}>
-                {(handle[0] === "." ? "?" : handle[0]).toUpperCase()}
+                {avatarInitial(handle)}
               </span>
             )}
             <span className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">

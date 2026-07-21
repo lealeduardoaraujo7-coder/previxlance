@@ -7,6 +7,7 @@ import { useTheme } from "next-themes"
 import { useTranslation, type Lang } from "./TranslationProvider"
 import { optionPct } from "@/lib/eventHelpers"
 import { openAuth } from "./AuthModal"
+import { gradient, avatarInitial } from "@/lib/avatar"
 
 const LANGUAGES: { code: Lang; label: string; flag: string }[] = [
   { code: "pt-BR", label: "Português (BR)", flag: "🇧🇷" },
@@ -295,18 +296,16 @@ function DropdownMenu({ session, onClose }: { session: any; onClose: () => void 
 
       <div className="p-1.5">
         {[
-          { href: "/classificacao", icon: "M8 21h8M12 17v4M6 4h12v4a6 6 0 01-12 0V4M6 4H3v1.5A3.5 3.5 0 006.5 9M18 4h3v1.5A3.5 3.5 0 0117.5 9", label: "Classificação" },
-          { href: "/perfil", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z", label: t("nav.myProfile") },
-          { href: "/apostas", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2", label: t("nav.myBets") },
-          { href: "/criar-mercado", icon: "M12 4v16m8-8H4", label: "Propor mercado" },
-          { href: "/depositar", icon: "M12 4v16m8-8H4", label: t("nav.deposit") },
-          { href: "/sacar", icon: "M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z", label: t("nav.withdraw") },
-        ].map(({ href, icon, label }) => (
+          { href: "/classificacao", emoji: "🏆", label: "Classificação" },
+          { href: "/perfil",        emoji: "👤", label: t("nav.myProfile") },
+          { href: "/apostas",       emoji: "📊", label: t("nav.myBets") },
+          { href: "/criar-mercado", emoji: "💡", label: "Propor mercado" },
+          { href: "/depositar",     emoji: "💰", label: t("nav.deposit") },
+          { href: "/sacar",         emoji: "🏦", label: t("nav.withdraw") },
+        ].map(({ href, emoji, label }) => (
           <Link key={href} href={href} onClick={onClose} className={link} style={{ color: "var(--text-1)" }}>
-            <span className="flex items-center gap-2">
-              <svg className="h-4 w-4 flex-shrink-0" style={{ color: "var(--text-2)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} />
-              </svg>
+            <span className="flex items-center gap-2.5">
+              <span className="w-5 text-center text-base leading-none flex-shrink-0">{emoji}</span>
               {label}
             </span>
           </Link>
@@ -517,13 +516,13 @@ export function Navbar() {
                   <div className="relative">
                     <button onClick={() => setMenuOpen(!menuOpen)} aria-label="Conta"
                       className="flex items-center justify-center overflow-hidden rounded-full transition-transform hover:scale-105"
-                      style={{ width: 34, height: 34, border: "1px solid var(--border-2)", background: "var(--card-2)" }}>
+                      style={{ width: 34, height: 34, border: "1px solid var(--border-2)", background: session.user.image ? "var(--card-2)" : gradient(session.user.username ?? session.user.email ?? "user") }}>
                       {session.user.image ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={session.user.image} alt="" className="h-full w-full object-cover" />
                       ) : (
-                        <span className="text-sm font-bold" style={{ color: "var(--text-0)" }}>
-                          {(session.user.name?.trim()?.[0] ?? "U").toUpperCase()}
+                        <span className="text-sm font-black text-white">
+                          {avatarInitial(session.user.username ?? session.user.email ?? "?")}
                         </span>
                       )}
                     </button>
@@ -601,16 +600,16 @@ export function Navbar() {
       {mobileOpen && (
         <div className="border-b px-4 py-3 space-y-1" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
           <div className="pb-2"><SearchBar /></div>
-          <Link href="/" onClick={closeAll} className="block rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800" style={{ color: "var(--text-1)" }}>{t("nav.markets")}</Link>
-          <Link href="/classificacao" onClick={closeAll} className="block rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800" style={{ color: "var(--text-1)" }}>Classificação</Link>
-          <Link href="/como-funciona" onClick={closeAll} className="block rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800" style={{ color: "var(--text-1)" }}>{t("nav.howItWorks")}</Link>
+          <Link href="/" onClick={closeAll} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800" style={{ color: "var(--text-1)" }}><span className="w-5 text-center text-base leading-none">📈</span>{t("nav.markets")}</Link>
+          <Link href="/classificacao" onClick={closeAll} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800" style={{ color: "var(--text-1)" }}><span className="w-5 text-center text-base leading-none">🏆</span>Classificação</Link>
+          <Link href="/como-funciona" onClick={closeAll} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800" style={{ color: "var(--text-1)" }}><span className="w-5 text-center text-base leading-none">❓</span>{t("nav.howItWorks")}</Link>
           {session ? (
             <>
-              <Link href="/perfil" onClick={closeAll} className="block rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800" style={{ color: "var(--text-1)" }}>{t("nav.myProfile")}</Link>
-              <Link href="/apostas" onClick={closeAll} className="block rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800" style={{ color: "var(--text-1)" }}>{t("nav.myBets")}</Link>
-              <Link href="/criar-mercado" onClick={closeAll} className="block rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800" style={{ color: "var(--text-1)" }}>Propor mercado</Link>
-              <Link href="/depositar" onClick={closeAll} className="block rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800" style={{ color: "var(--text-1)" }}>{t("nav.deposit")}</Link>
-              <Link href="/sacar" onClick={closeAll} className="block rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800" style={{ color: "var(--text-1)" }}>{t("nav.withdraw")}</Link>
+              <Link href="/perfil" onClick={closeAll} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800" style={{ color: "var(--text-1)" }}><span className="w-5 text-center text-base leading-none">👤</span>{t("nav.myProfile")}</Link>
+              <Link href="/apostas" onClick={closeAll} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800" style={{ color: "var(--text-1)" }}><span className="w-5 text-center text-base leading-none">📊</span>{t("nav.myBets")}</Link>
+              <Link href="/criar-mercado" onClick={closeAll} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800" style={{ color: "var(--text-1)" }}><span className="w-5 text-center text-base leading-none">💡</span>Propor mercado</Link>
+              <Link href="/depositar" onClick={closeAll} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800" style={{ color: "var(--text-1)" }}><span className="w-5 text-center text-base leading-none">💰</span>{t("nav.deposit")}</Link>
+              <Link href="/sacar" onClick={closeAll} className="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-zinc-800" style={{ color: "var(--text-1)" }}><span className="w-5 text-center text-base leading-none">🏦</span>{t("nav.withdraw")}</Link>
               {session.user.role === "ADMIN" && (
                 <Link href="/admin" onClick={closeAll} className="block rounded-lg px-3 py-2.5 text-sm font-medium text-emerald-600 dark:text-emerald-400 hover:bg-gray-50 dark:hover:bg-zinc-800">{t("nav.admin")}</Link>
               )}
