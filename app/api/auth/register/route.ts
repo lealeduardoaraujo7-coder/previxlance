@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server"
+import { cookies } from "next/headers"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
+import { verifyCode, EVC_COOKIE } from "@/lib/emailCode"
 
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/
 
 export async function POST(req: Request) {
-  const { name, email, password, username } = await req.json()
+  const { name, email, password, username, code } = await req.json()
 
   if (!name || !email || !password) {
     return NextResponse.json({ error: "Preencha todos os campos" }, { status: 400 })
@@ -13,6 +15,17 @@ export async function POST(req: Request) {
 
   if (password.length < 6) {
     return NextResponse.json({ error: "Senha deve ter no mínimo 6 caracteres" }, { status: 400 })
+  }
+
+  // If a verification cookie is present, the e-mail code must match. When there's
+  // no cookie (Resend not configured), signup proceeds without a code.
+  const jar = await cookies()
+  const evc = jar.get(EVC_COOKIE)?.value
+  if (evc) {
+    if (!code) return NextResponse.json({ error: "Informe o código enviado ao seu e-mail" }, { status: 400 })
+    if (!verifyCode(evc, email, String(code))) {
+      return NextResponse.json({ error: "Código incorreto ou expirado" }, { status: 400 })
+    }
   }
 
   const existing = await prisma.user.findUnique({ where: { email } })
@@ -40,5 +53,7 @@ export async function POST(req: Request) {
     data: { name, email, password: hashed, ...(handle ? { username: handle } : {}) },
   })
 
-  return NextResponse.json({ ok: true })
+  const res = NextResponse.json({ ok: true })
+  if (evc) res.cookies.set(EVC_COOKIE, "", { httpOnly: true, path: "/", maxAge: 0 })
+  return res
 }

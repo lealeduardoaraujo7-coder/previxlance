@@ -18,6 +18,8 @@ export default function AuthModal() {
   const [username, setUsername] = useState("")
   const [usernameEdited, setUsernameEdited] = useState(false)
   const [agree, setAgree] = useState(false)
+  const [codeStep, setCodeStep] = useState(false)
+  const [code, setCode] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
@@ -27,7 +29,7 @@ export default function AuthModal() {
     function onOpen(e: Event) {
       const m = (e as CustomEvent).detail?.mode === "signup" ? "signup" : "login"
       setMode(m); setEmailStep(false); setError(""); setEmail(""); setPassword("")
-      setUsername(""); setUsernameEdited(false); setAgree(false); setOpen(true)
+      setUsername(""); setUsernameEdited(false); setAgree(false); setCodeStep(false); setCode(""); setOpen(true)
     }
     window.addEventListener("previx:auth", onOpen as EventListener)
     return () => window.removeEventListener("previx:auth", onOpen as EventListener)
@@ -56,21 +58,53 @@ export default function AuthModal() {
     signIn(provider, { callbackUrl: "/" })
   }
 
-  async function emailSubmit() {
-    setError(""); setLoading(true)
-    if (mode === "signup") {
-      const reg = await fetch("/api/auth/register", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: username || email.split("@")[0], email, password, username }),
-      })
-      const data = await reg.json().catch(() => ({}))
-      if (!reg.ok) { setLoading(false); setError(data.error || "Erro ao cadastrar"); return }
-    }
+  // Create the account (with the e-mail code when we're in the code step) then sign in.
+  async function finishSignup(withCode?: string) {
+    setLoading(true)
+    const reg = await fetch("/api/auth/register", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: username || email.split("@")[0], email, password, username, code: withCode }),
+    })
+    const data = await reg.json().catch(() => ({}))
+    if (!reg.ok) { setLoading(false); setError(data.error || "Erro ao cadastrar"); return }
     const res = await signIn("credentials", { email, password, redirect: false })
     setLoading(false)
-    if (res?.error) { setError("E-mail ou senha inválidos"); return }
-    setOpen(false)
-    router.refresh()
+    if (res?.error) { setError("Conta criada, mas falha ao entrar. Tente conectar-se."); return }
+    setOpen(false); router.refresh()
+  }
+
+  async function sendCode() {
+    const r = await fetch("/api/auth/send-code", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    })
+    return r.json().catch(() => ({}))
+  }
+
+  async function emailSubmit() {
+    setError(""); setLoading(true)
+
+    if (mode === "login") {
+      const res = await signIn("credentials", { email, password, redirect: false })
+      setLoading(false)
+      if (res?.error) { setError("E-mail ou senha inválidos"); return }
+      setOpen(false); router.refresh()
+      return
+    }
+
+    // signup — first request a verification code (or fall back if not configured)
+    if (!codeStep) {
+      const d = await sendCode()
+      if (d?.configured === false) { await finishSignup(); return }   // Resend not set up → direct
+      setLoading(false)
+      if (d?.error) { setError(d.error); return }
+      setCodeStep(true)
+      return
+    }
+
+    // signup — code step
+    if (code.length < 6) { setLoading(false); setError("Digite o código de 6 dígitos"); return }
+    await finishSignup(code)
   }
 
   const title = mode === "login" ? "Conecte-se" : "Inscrever-se"
@@ -125,6 +159,28 @@ export default function AuthModal() {
                 </button>
 
                 {error && <p className="text-xs text-center" style={{ color: "var(--red)" }}>{error}</p>}
+              </div>
+            ) : codeStep ? (
+              <div className="space-y-4">
+                <p className="text-sm text-center leading-relaxed" style={{ color: "var(--text-1)" }}>
+                  Enviamos um código de 6 dígitos para<br />
+                  <strong style={{ color: "var(--text-0)" }}>{email}</strong>
+                </p>
+                <input inputMode="numeric" maxLength={6} value={code} autoFocus
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  onKeyDown={(e) => { if (e.key === "Enter") emailSubmit() }}
+                  placeholder="••••••"
+                  className="w-full rounded-xl px-4 py-3 text-center text-2xl font-bold tracking-[0.4em] focus:outline-none"
+                  style={{ background: "var(--card-2)", border: "1px solid var(--border-2)", color: "var(--text-0)" }} />
+                {error && <p className="text-xs text-center" style={{ color: "var(--red)" }}>{error}</p>}
+                <button onClick={emailSubmit} disabled={loading || code.length < 6}
+                  className="w-full rounded-xl py-3 text-sm font-bold text-white transition-all disabled:opacity-50"
+                  style={{ background: "linear-gradient(135deg,#00c076,#009e64)" }}>
+                  {loading ? "..." : "Confirmar e criar conta"}
+                </button>
+                <button onClick={async () => { setError(""); const d = await sendCode(); if (d?.error) setError(d.error) }}
+                  className="w-full text-xs" style={{ color: "var(--green)" }}>Não recebeu? Reenviar código</button>
+                <button onClick={() => { setCodeStep(false); setCode(""); setError("") }} className="w-full text-xs" style={{ color: "var(--text-2)" }}>← Voltar</button>
               </div>
             ) : (
               <div className="space-y-3">
